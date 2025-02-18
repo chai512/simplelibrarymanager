@@ -2,11 +2,12 @@ namespace SimpleLibraryManagerLib
 {
     public class Library(int capacity) : ILibrary
     {
-        private readonly List<Book> books = [];
+        private readonly IDictionary<string,Book> books = new Dictionary<string,Book>();
         private readonly int capacity = capacity;
 
         private const string FullCapacityMessage = "Library is at full capacity. Cannot add more books.";
         private const string BookAddedMessage = "Book '{0}' by {1} added to the library.";
+        private const string BookAlreadyExistsMessage = "Book '{0}' by {1} already exists in the library.";
         private const string BooksInLibraryMessage = "Books in the library:";
         private const string BookRemovedMessage = "Book '{0}' removed from the library.";
         private const string BookNotFoundMessage = "Book '{0}' not found in the library.";
@@ -18,7 +19,11 @@ namespace SimpleLibraryManagerLib
                 return CreateLibraryOperationResult(false, LibraryError.FullCapacity, FullCapacityMessage);
             }
 
-            books.Add(book);
+            if (!books.TryAdd(book.Title, book))
+            {
+                return CreateLibraryOperationResult(false, LibraryError.BookAlreadyExists, string.Format(BookAlreadyExistsMessage, book.Title, book.Author));
+            }
+
             return CreateLibraryOperationResult(true, message: string.Format(BookAddedMessage, book.Title, book.Author));
         }
 
@@ -32,10 +37,10 @@ namespace SimpleLibraryManagerLib
             var message = new System.Text.StringBuilder();
             message.AppendLine(BooksInLibraryMessage);
 
-            for (int i = 0; i < books.Count; i++)
+            int i = 0;
+            foreach (var book in books.Values)
             {
-                var book = books[i];
-                message.AppendLine($"{i + 1}. {book.Title} by {book.Author}");
+                message.AppendLine($"{++i}. {book.Title} by {book.Author}");
             }
 
             return CreateLibraryOperationResult(true, message: message.ToString());
@@ -43,11 +48,24 @@ namespace SimpleLibraryManagerLib
 
         public LibraryOperationResult RemoveBook(string title)
         {
-            var bookToRemove = books.FirstOrDefault(b => b.Title == title);
+            var bookToRemove = books.FirstOrDefault(b => b.Value.Title == title).Value;
             if (bookToRemove != null)
             {
-                books.Remove(bookToRemove);
+                books.Remove(bookToRemove.Title);
                 return CreateLibraryOperationResult(true, message: string.Format(BookRemovedMessage, title));
+            }
+            else
+            {
+                return CreateLibraryOperationResult(false, LibraryError.BookNotFound, string.Format(BookNotFoundMessage, title));
+            }
+        }
+
+        public LibraryOperationResult FindBook(string title)
+        {
+            var book = books.FirstOrDefault(b => b.Value.Title == title).Value;
+            if (book != null)
+            {
+                return CreateLibraryOperationResult(true, message: book.Title);
             }
             else
             {
@@ -62,7 +80,7 @@ namespace SimpleLibraryManagerLib
                 return null;
             }
 
-            return books.FirstOrDefault(b => b.Title == title);
+            return books.FirstOrDefault(b => b.Value.Title == title).Value;
         }
 
         private static LibraryOperationResult CreateLibraryOperationResult(

@@ -4,6 +4,7 @@ namespace SimpleLibraryManagerLib
     {
         None,
         FullCapacity,
-        BookNotFound
+        BookNotFound,
+        BookAlreadyExists
     }
 }
